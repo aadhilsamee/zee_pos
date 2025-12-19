@@ -79,6 +79,33 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
+// Temporary Seeding Route - DELETE AFTER USE
+router.get('/seed-admin', async (req, res) => {
+  try {
+    const { key } = req.query;
+    if (key !== 'zee123') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    // Check if admin already exists
+    const existingAdmin = await User.findOne({ email: 'admin@gmail.com' });
+    if (existingAdmin) {
+      return res.json({ message: 'Admin already exists' });
+    }
+
+    const adminUser = new User({
+      name: 'Admin',
+      email: 'admin@gmail.com',
+      password: 'admin123'
+    });
+
+    await adminUser.save();
+    res.json({ message: 'Admin user created successfully!', email: 'admin@gmail.com' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Change password
 router.put('/change-password', authMiddleware, async (req, res) => {
   try {
