@@ -1,39 +1,39 @@
+const path = require('path');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-
-dotenv.config();
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
 const seedAdmin = async () => {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
-        console.log('Connected to MongoDB');
-
-        const adminEmail = 'admin@gmail.com';
-        const adminPassword = 'admin123';
-
-        let admin = await User.findOne({ email: adminEmail });
-
-        if (admin) {
-            console.log('Admin user already exists. Updating password...');
-            admin.password = adminPassword; // Pre-save hook will hash this
-            await admin.save();
-            console.log('Admin password updated to default.');
-        } else {
-            admin = new User({
-                name: 'Admin',
-                email: adminEmail,
-                password: adminPassword,
-                role: 'admin'
-            });
-            await admin.save();
-            console.log('Admin user created successfully');
+        const uri = process.env.MONGODB_URI;
+        if (!uri) {
+            console.error('Error: MONGODB_URI not found in .env');
+            process.exit(1);
         }
 
-        mongoose.disconnect();
+        await mongoose.connect(uri, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        console.log('MongoDB connected for seeding...');
+
+        // Delete existing users with this email if any
+        await User.deleteMany({ email: 'admin@gmail.com' });
+
+        const adminUser = new User({
+            name: 'Admin',
+            email: 'admin@gmail.com',
+            password: 'admin123',
+        });
+
+        await adminUser.save();
+        console.log('Admin user created successfully!');
+        console.log('Email: admin@gmail.com');
+        console.log('Password: admin123');
+
+        process.exit(0);
     } catch (error) {
-        console.error('Error seeding admin:', error);
+        console.error('Seeding failed:', error.message);
         process.exit(1);
     }
 };
