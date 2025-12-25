@@ -104,17 +104,30 @@ const Store = () => {
 
         try {
             setLoading(true);
-            const dataToSave = {
-                ...formData,
-                unitsPerBag: Number(formData.unitsPerBag) || 1
-            };
+            const upb = Number(formData.unitsPerBag) || 1;
+            const bags = Number(formData.quantity);
+
+            // If editing, we send the total kg because the backend PUT expects total kg
+            // If creating, the backend POST now expects bags and will calculate total kg
+            let dataToSend;
             if (editingId) {
-                await storeProductAPI.update(editingId, dataToSave);
+                const totalKg = bags * upb;
+                dataToSend = {
+                    ...formData,
+                    quantity: totalKg,
+                    unitsPerBag: upb
+                };
+                await storeProductAPI.update(editingId, dataToSend);
                 toast.success('Store product updated successfully');
             } else {
-                await storeProductAPI.create(dataToSave);
+                dataToSend = {
+                    ...formData,
+                    unitsPerBag: upb
+                };
+                await storeProductAPI.create(dataToSend);
                 toast.success('Store product added successfully');
             }
+
             fetchProducts();
             resetForm();
         } catch (err) {
@@ -155,11 +168,13 @@ const Store = () => {
     };
 
     const handleEdit = (product) => {
+        const upb = product.unitsPerBag || 1;
+        const bags = product.quantity / upb;
         setFormData({
             name: product.name,
             costPrice: product.costPrice,
-            quantity: product.quantity,
-            unitsPerBag: product.unitsPerBag || '1',
+            quantity: bags, // For the UI, we show bags
+            unitsPerBag: upb,
             barcode: product.barcode || '',
             category: product.category || '',
             notes: product.notes || ''
@@ -400,12 +415,12 @@ const Store = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">kg Per Bag</label>
-                                    <input type="number" name="unitsPerBag" value={formData.unitsPerBag} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="1" min="1" step="0.01" required />
+                                    <input type="number" name="unitsPerBag" value={formData.unitsPerBag} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="1" min="0.01" step="0.01" required />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Initial Quantity (kg) *</label>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{editingId ? 'Quantity (Bags)' : 'Initial Quantity (Bags)'} *</label>
                                 <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0" step="0.01" required />
                             </div>
 

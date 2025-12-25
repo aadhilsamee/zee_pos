@@ -27,11 +27,15 @@ router.post('/', authMiddleware, async (req, res) => {
             });
         }
 
+        const upb = Number(unitsPerBag) || 1;
+        const initialBags = Number(quantity);
+        const totalKg = initialBags * upb;
+
         const product = new StoreProduct({
             name,
             costPrice,
-            quantity: Number(quantity),
-            unitsPerBag: Number(unitsPerBag) || 1,
+            quantity: totalKg,
+            unitsPerBag: upb,
             barcode: barcode || '',
             category: category || '',
             notes: notes || ''
@@ -39,16 +43,16 @@ router.post('/', authMiddleware, async (req, res) => {
 
         await product.save();
 
-        // Log initial stock as history
-        if (quantity > 0) {
+        // Log initial stock as history (as bags)
+        if (initialBags > 0) {
             const history = new StoreHistory({
                 productId: product._id,
                 productName: product.name,
                 type: 'add',
-                quantity: product.quantity,
-                adjustmentType: 'units',
-                unitsPerBag: product.unitsPerBag,
-                totalQuantityAdjusted: product.quantity,
+                quantity: initialBags,
+                adjustmentType: 'bags',
+                unitsPerBag: upb,
+                totalQuantityAdjusted: totalKg,
                 costPrice: product.costPrice,
                 notes: 'Initial stock'
             });
@@ -65,6 +69,12 @@ router.post('/', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
         const { name, costPrice, quantity, unitsPerBag, barcode, category, notes } = req.body;
+
+        // For updates, we expect the total kg to be passed or handled
+        // If the user is editing the product details, we keep the existing quantity (total kg)
+        // unless they explicitly want to change it.
+        // However, the frontend for editing currently allows editing the quantity.
+        // We should ensure consistency. If editing, quantity passed is total kg.
 
         const product = await StoreProduct.findByIdAndUpdate(
             req.params.id,
