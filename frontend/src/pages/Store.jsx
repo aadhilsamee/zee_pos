@@ -1,18 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, Trash2, Package, Plus, X, Search, AlertTriangle, Warehouse } from 'lucide-react';
+import { Edit2, Trash2, Package, Plus, X, Search, AlertTriangle, Warehouse, History, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import storeProductAPI from '../services/storeProductAPI';
 import Header from '../components/Header';
+import { useNavigate } from 'react-router-dom';
 
 const Store = () => {
+    const navigate = useNavigate();
     const [products, setProducts] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         costPrice: '',
         quantity: '',
+        unitsPerBag: '1',
         barcode: '',
         category: '',
+        notes: ''
+    });
+    const [adjustData, setAdjustData] = useState({
+        productId: '',
+        productName: '',
+        type: 'add',
+        quantity: '',
+        adjustmentType: 'units',
         notes: ''
     });
     const [editingId, setEditingId] = useState(null);
@@ -44,11 +56,17 @@ const Store = () => {
         setFormData({ ...formData, [name]: value });
     };
 
+    const handleAdjustChange = (e) => {
+        const { name, value } = e.target;
+        setAdjustData({ ...adjustData, [name]: value });
+    };
+
     const resetForm = () => {
         setFormData({
             name: '',
             costPrice: '',
             quantity: '',
+            unitsPerBag: '1',
             barcode: '',
             category: '',
             notes: ''
@@ -56,6 +74,18 @@ const Store = () => {
         setEditingId(null);
         setIsModalOpen(false);
         setError('');
+    };
+
+    const resetAdjustForm = () => {
+        setAdjustData({
+            productId: '',
+            productName: '',
+            type: 'add',
+            quantity: '',
+            adjustmentType: 'units',
+            notes: ''
+        });
+        setIsAdjustModalOpen(false);
     };
 
     const handleSubmit = async (e) => {
@@ -74,11 +104,15 @@ const Store = () => {
 
         try {
             setLoading(true);
+            const dataToSave = {
+                ...formData,
+                unitsPerBag: Number(formData.unitsPerBag) || 1
+            };
             if (editingId) {
-                await storeProductAPI.update(editingId, formData);
+                await storeProductAPI.update(editingId, dataToSave);
                 toast.success('Store product updated successfully');
             } else {
-                await storeProductAPI.create(formData);
+                await storeProductAPI.create(dataToSave);
                 toast.success('Store product added successfully');
             }
             fetchProducts();
@@ -95,17 +129,55 @@ const Store = () => {
         }
     };
 
+    const handleAdjustSubmit = async (e) => {
+        e.preventDefault();
+        if (!adjustData.quantity || adjustData.quantity <= 0) {
+            toast.error('Please enter a valid quantity');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            await storeProductAPI.adjustStock(adjustData.productId, {
+                type: adjustData.type,
+                quantity: Number(adjustData.quantity),
+                adjustmentType: adjustData.adjustmentType,
+                notes: adjustData.notes
+            });
+            toast.success(`Stock ${adjustData.type === 'add' ? 'added' : 'deducted'} successfully`);
+            fetchProducts();
+            resetAdjustForm();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to adjust stock');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleEdit = (product) => {
         setFormData({
             name: product.name,
             costPrice: product.costPrice,
             quantity: product.quantity,
+            unitsPerBag: product.unitsPerBag || '1',
             barcode: product.barcode || '',
             category: product.category || '',
             notes: product.notes || ''
         });
         setEditingId(product._id);
         setIsModalOpen(true);
+    };
+
+    const openAdjustModal = (product, type) => {
+        setAdjustData({
+            productId: product._id,
+            productName: product.name,
+            type: type,
+            quantity: '',
+            adjustmentType: 'units',
+            notes: ''
+        });
+        setIsAdjustModalOpen(true);
     };
 
     const handleDelete = async () => {
@@ -150,7 +222,7 @@ const Store = () => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-purple-100 font-medium">Total Quantity</p>
-                            <p className="text-3xl font-bold text-white mt-1">{totalQuantity}</p>
+                            <p className="text-3xl font-bold text-white mt-1">{totalQuantity.toFixed(2)} kg</p>
                         </div>
                         <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
                             <Package size={28} className="text-white" />
@@ -162,7 +234,7 @@ const Store = () => {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm text-green-100 font-medium">Total Value</p>
-                            <p className="text-3xl font-bold text-white mt-1">Rs {totalValue.toFixed(0)}</p>
+                            <p className="text-3xl font-bold text-white mt-1">Rs {totalValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                         </div>
                         <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
                             <Package size={28} className="text-white" />
@@ -183,10 +255,16 @@ const Store = () => {
                         className="w-full pl-12 pr-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400"
                     />
                 </div>
-                <button onClick={() => setIsModalOpen(true)} className="btn-primary px-6 py-3 flex items-center justify-center gap-2 shrink-0">
-                    <Plus size={20} />
-                    Add Product
-                </button>
+                <div className="flex gap-2">
+                    <button onClick={() => navigate('/store-history')} className="px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-semibold">
+                        <History size={20} />
+                        History
+                    </button>
+                    <button onClick={() => setIsModalOpen(true)} className="btn-primary px-6 py-3 flex items-center justify-center gap-2 shrink-0">
+                        <Plus size={20} />
+                        Add Product
+                    </button>
+                </div>
             </div>
 
             {/* Products Table */}
@@ -217,9 +295,9 @@ const Store = () => {
                                     <tr>
                                         <th className="p-4 text-left text-xs font-semibold">Product Name</th>
                                         <th className="p-4 text-left text-xs font-semibold">Category</th>
-                                        <th className="p-4 text-left text-xs font-semibold">Barcode</th>
                                         <th className="p-4 text-right text-xs font-semibold">Cost Price</th>
-                                        <th className="p-4 text-right text-xs font-semibold">Quantity</th>
+                                        <th className="p-4 text-right text-xs font-semibold">kg/Bag</th>
+                                        <th className="p-4 text-right text-xs font-semibold">Total Stock</th>
                                         <th className="p-4 text-right text-xs font-semibold">Total Value</th>
                                         <th className="p-4 text-center text-xs font-semibold">Actions</th>
                                     </tr>
@@ -229,12 +307,19 @@ const Store = () => {
                                         <tr key={product._id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
                                             <td className="p-4 font-medium text-gray-900 dark:text-white">{product.name}</td>
                                             <td className="p-4 text-sm text-gray-600 dark:text-gray-300">{product.category || '-'}</td>
-                                            <td className="p-4 text-sm font-mono text-gray-600 dark:text-gray-300">{product.barcode || '-'}</td>
-                                            <td className="p-4 text-right font-semibold text-gray-900 dark:text-white">Rs {product.costPrice.toFixed(0)}</td>
-                                            <td className="p-4 text-right font-semibold text-gray-900 dark:text-white">{product.quantity}</td>
-                                            <td className="p-4 text-right font-bold text-primary-600 dark:text-primary-400">Rs {(product.costPrice * product.quantity).toFixed(0)}</td>
+                                            <td className="p-4 text-right font-semibold text-gray-900 dark:text-white">Rs {product.costPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
+                                            <td className="p-4 text-right text-sm text-gray-600 dark:text-gray-300">{product.unitsPerBag || 1} kg</td>
+                                            <td className="p-4 text-right font-semibold text-gray-900 dark:text-white">{product.quantity.toFixed(2)} kg</td>
+                                            <td className="p-4 text-right font-bold text-primary-600 dark:text-primary-400">Rs {(product.costPrice * product.quantity).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                                             <td className="p-4">
                                                 <div className="flex items-center justify-center gap-2">
+                                                    <button onClick={() => openAdjustModal(product, 'add')} className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors" title="Add Stock">
+                                                        <ArrowUpCircle size={20} />
+                                                    </button>
+                                                    <button onClick={() => openAdjustModal(product, 'deduct')} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Deduct Stock">
+                                                        <ArrowDownCircle size={20} />
+                                                    </button>
+                                                    <div className="w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
                                                     <button onClick={() => handleEdit(product)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Edit">
                                                         <Edit2 size={18} />
                                                     </button>
@@ -255,12 +340,15 @@ const Store = () => {
                                 <div key={product._id} className="p-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
                                     <div className="flex justify-between items-start mb-2">
                                         <h3 className="font-bold text-gray-900 dark:text-white">{product.name}</h3>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleEdit(product)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg">
-                                                <Edit2 size={16} />
+                                        <div className="flex gap-1">
+                                            <button onClick={() => openAdjustModal(product, 'add')} className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg">
+                                                <ArrowUpCircle size={18} />
                                             </button>
-                                            <button onClick={() => setDeleteModal({ isOpen: true, product })} className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
-                                                <Trash2 size={16} />
+                                            <button onClick={() => openAdjustModal(product, 'deduct')} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
+                                                <ArrowDownCircle size={18} />
+                                            </button>
+                                            <button onClick={() => handleEdit(product)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg">
+                                                <Edit2 size={18} />
                                             </button>
                                         </div>
                                     </div>
@@ -268,9 +356,9 @@ const Store = () => {
                                         <div className="text-gray-500 dark:text-gray-400">Category:</div>
                                         <div className="text-right font-medium text-gray-700 dark:text-gray-300">{product.category || '-'}</div>
                                         <div className="text-gray-500 dark:text-gray-400">Cost Price:</div>
-                                        <div className="text-right font-semibold text-gray-900 dark:text-white">Rs {product.costPrice.toFixed(0)}</div>
-                                        <div className="text-gray-500 dark:text-gray-400">Quantity:</div>
-                                        <div className="text-right font-semibold text-gray-900 dark:text-white">{product.quantity}</div>
+                                        <div className="text-right font-semibold text-gray-900 dark:text-white">Rs {product.costPrice.toFixed(2)}</div>
+                                        <div className="text-gray-500 dark:text-gray-400">Total Stock:</div>
+                                        <div className="text-right font-semibold text-gray-900 dark:text-white">{product.quantity.toFixed(2)} kg</div>
                                         <div className="text-gray-500 dark:text-gray-400">Total Value:</div>
                                         <div className="text-right font-bold text-primary-600 dark:text-primary-400">Rs {(product.costPrice * product.quantity).toFixed(0)}</div>
                                     </div>
@@ -305,14 +393,20 @@ const Store = () => {
                                 <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter product name" required />
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Cost Price (Rs) *</label>
-                                <input type="number" name="costPrice" value={formData.costPrice} onChange={handleChange} onWheel={(e) => e.target.blur()} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0" step="0.01" required />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Cost Price (Rs) *</label>
+                                    <input type="number" name="costPrice" value={formData.costPrice} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0" step="0.01" required />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">kg Per Bag</label>
+                                    <input type="number" name="unitsPerBag" value={formData.unitsPerBag} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="1" min="1" step="0.01" required />
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Quantity *</label>
-                                <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} onWheel={(e) => e.target.blur()} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0" required />
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Initial Quantity (kg) *</label>
+                                <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0" step="0.01" required />
                             </div>
 
                             <div>
@@ -327,7 +421,7 @@ const Store = () => {
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Notes</label>
-                                <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" placeholder="Storage location or additional notes (optional)"></textarea>
+                                <textarea name="notes" value={formData.notes} onChange={handleChange} rows="2" className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" placeholder="Storage location or additional notes (optional)"></textarea>
                             </div>
 
                             <div className="flex gap-3 pt-4">
@@ -336,6 +430,57 @@ const Store = () => {
                                 </button>
                                 <button type="submit" disabled={loading} className="flex-1 btn-primary px-6 py-3">
                                     {loading ? 'Saving...' : editingId ? 'Update' : 'Add'} Product
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Adjustment Modal */}
+            {isAdjustModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md animate-slide-up">
+                        <div className={`p-6 rounded-t-2xl text-white flex justify-between items-center ${adjustData.type === 'add' ? 'bg-green-600' : 'bg-red-600'}`}>
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                {adjustData.type === 'add' ? <ArrowUpCircle /> : <ArrowDownCircle />}
+                                {adjustData.type === 'add' ? 'Add Stock' : 'Deduct Stock'}
+                            </h3>
+                            <button onClick={resetAdjustForm} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAdjustSubmit} className="p-6 space-y-4">
+                            <p className="text-gray-600 dark:text-gray-400 font-medium">
+                                Product: <span className="text-gray-900 dark:text-white font-bold">{adjustData.productName}</span>
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Quantity</label>
+                                    <input type="number" name="quantity" value={adjustData.quantity} onChange={handleAdjustChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0.01" step="0.01" required autoFocus />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Unit</label>
+                                    <select name="adjustmentType" value={adjustData.adjustmentType} onChange={handleAdjustChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                        <option value="units">kg</option>
+                                        <option value="bags">Bags</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Notes</label>
+                                <textarea name="notes" value={adjustData.notes} onChange={handleAdjustChange} rows="2" className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" placeholder="Reason for adjustment..."></textarea>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={resetAdjustForm} className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-semibold">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={loading} className={`flex-1 px-6 py-3 text-white rounded-xl font-bold transition-all shadow-lg ${adjustData.type === 'add' ? 'bg-green-600 hover:bg-green-700 shadow-green-500/30' : 'bg-red-600 hover:bg-red-700 shadow-red-500/30'}`}>
+                                    {loading ? 'Processing...' : 'Confirm'}
                                 </button>
                             </div>
                         </form>

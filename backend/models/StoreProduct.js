@@ -17,6 +17,11 @@ const StoreProductSchema = new mongoose.Schema({
         default: 0,
         min: 0
     },
+    unitsPerBag: {
+        type: Number,
+        default: 1,
+        min: 1
+    },
     barcode: {
         type: String,
         trim: true,

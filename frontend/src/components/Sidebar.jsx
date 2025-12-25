@@ -28,6 +28,7 @@ const Sidebar = ({ onLogout, isOpen, toggleSidebar, closeSidebar }) => {
     { id: 'customers', label: 'Customers', icon: Users, path: '/customers' },
     { id: 'debts', label: 'Debts', icon: FileText, path: '/debts' },
     { id: 'history', label: 'History', icon: History, path: '/history' },
+    { id: 'store-history', label: 'Store History', icon: TrendingUp, path: '/store-history' },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
   ];
 

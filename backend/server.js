@@ -11,6 +11,7 @@ const customersRoutes = require('./routes/customers');
 const transactionsRoutes = require('./routes/transactions');
 const debtsRoutes = require('./routes/debts');
 const storeProductsRoutes = require('./routes/storeProducts');
+const storeHistoryRoutes = require('./routes/storeHistory');
 const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
@@ -79,6 +80,7 @@ app.use('/api/customers', customersRoutes);
 app.use('/api/transactions', transactionsRoutes);
 app.use('/api/debts', debtsRoutes);
 app.use('/api/store-products', storeProductsRoutes);
+app.use('/api/store-history', storeHistoryRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Health check

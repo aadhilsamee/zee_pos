@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const StoreProduct = require('../models/StoreProduct');
+const StoreHistory = require('../models/StoreHistory');
 const authMiddleware = require('../middleware/auth');
 
 // Get all store products
@@ -16,7 +17,7 @@ router.get('/', authMiddleware, async (req, res) => {
 // Create new store product
 router.post('/', authMiddleware, async (req, res) => {
     try {
-        const { name, costPrice, quantity, barcode, category, notes } = req.body;
+        const { name, costPrice, quantity, unitsPerBag, barcode, category, notes } = req.body;
 
         // Validation
         if (!name || !costPrice || quantity === undefined) {
@@ -29,13 +30,31 @@ router.post('/', authMiddleware, async (req, res) => {
         const product = new StoreProduct({
             name,
             costPrice,
-            quantity,
+            quantity: Number(quantity),
+            unitsPerBag: Number(unitsPerBag) || 1,
             barcode: barcode || '',
             category: category || '',
             notes: notes || ''
         });
 
         await product.save();
+
+        // Log initial stock as history
+        if (quantity > 0) {
+            const history = new StoreHistory({
+                productId: product._id,
+                productName: product.name,
+                type: 'add',
+                quantity: product.quantity,
+                adjustmentType: 'units',
+                unitsPerBag: product.unitsPerBag,
+                totalQuantityAdjusted: product.quantity,
+                costPrice: product.costPrice,
+                notes: 'Initial stock'
+            });
+            await history.save();
+        }
+
         res.status(201).json({ success: true, data: product });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -45,11 +64,19 @@ router.post('/', authMiddleware, async (req, res) => {
 // Update store product
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
-        const { name, costPrice, quantity, barcode, category, notes } = req.body;
+        const { name, costPrice, quantity, unitsPerBag, barcode, category, notes } = req.body;
 
         const product = await StoreProduct.findByIdAndUpdate(
             req.params.id,
-            { name, costPrice, quantity, barcode, category, notes },
+            {
+                name,
+                costPrice,
+                quantity: Number(quantity),
+                unitsPerBag: Number(unitsPerBag) || 1,
+                barcode,
+                category,
+                notes
+            },
             { new: true, runValidators: true }
         );
 
@@ -96,6 +123,57 @@ router.get('/search', authMiddleware, async (req, res) => {
         });
 
         res.json({ success: true, data: products });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// Adjust stock (add/deduct)
+router.post('/:id/adjust', authMiddleware, async (req, res) => {
+    try {
+        const { type, quantity, adjustmentType, notes } = req.body;
+        const product = await StoreProduct.findById(req.params.id);
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+        }
+
+        const qty = Number(quantity);
+        const upb = Number(product.unitsPerBag) || 1;
+        const unitsToAdjust = adjustmentType === 'bags' ? qty * upb : qty;
+
+        if (isNaN(unitsToAdjust)) {
+            return res.status(400).json({ success: false, message: 'Invalid quantity' });
+        }
+
+        if (type === 'deduct' && product.quantity < unitsToAdjust) {
+            return res.status(400).json({
+                success: false,
+                message: `Insufficient stock. Required: ${unitsToAdjust.toFixed(2)}kg, Available: ${product.quantity.toFixed(2)}kg`
+            });
+        }
+
+        const newQuantity = type === 'add'
+            ? product.quantity + unitsToAdjust
+            : product.quantity - unitsToAdjust;
+
+        product.quantity = newQuantity;
+        await product.save();
+
+        const history = new StoreHistory({
+            productId: product._id,
+            productName: product.name,
+            type,
+            quantity: qty,
+            adjustmentType,
+            unitsPerBag: upb,
+            totalQuantityAdjusted: unitsToAdjust,
+            costPrice: product.costPrice,
+            notes: notes || ''
+        });
+        await history.save();
+
+        res.json({ success: true, data: product });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
