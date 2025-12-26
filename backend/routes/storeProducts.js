@@ -20,10 +20,10 @@ router.post('/', authMiddleware, async (req, res) => {
         const { name, costPrice, quantity, unitsPerBag, barcode, category, notes } = req.body;
 
         // Validation
-        if (!name || !costPrice || quantity === undefined) {
+        if (!name || quantity === undefined || quantity === '') {
             return res.status(400).json({
                 success: false,
-                message: 'Name, cost price, and quantity are required'
+                message: 'Name and quantity are required'
             });
         }
 

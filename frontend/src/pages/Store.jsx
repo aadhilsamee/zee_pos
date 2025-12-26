@@ -12,7 +12,7 @@ const Store = () => {
     const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
-        costPrice: '',
+        costPrice: '0',
         quantity: '',
         unitsPerBag: '1',
         barcode: '',
@@ -24,7 +24,7 @@ const Store = () => {
         productName: '',
         type: 'add',
         quantity: '',
-        adjustmentType: 'units',
+        adjustmentType: 'bags',
         notes: ''
     });
     const [editingId, setEditingId] = useState(null);
@@ -64,7 +64,7 @@ const Store = () => {
     const resetForm = () => {
         setFormData({
             name: '',
-            costPrice: '',
+            costPrice: '0',
             quantity: '',
             unitsPerBag: '1',
             barcode: '',
@@ -82,7 +82,7 @@ const Store = () => {
             productName: '',
             type: 'add',
             quantity: '',
-            adjustmentType: 'units',
+            adjustmentType: 'bags',
             notes: ''
         });
         setIsAdjustModalOpen(false);
@@ -92,8 +92,8 @@ const Store = () => {
         e.preventDefault();
         setError('');
 
-        if (!formData.name || !formData.costPrice || formData.quantity === '') {
-            const msg = 'Name, cost price, and quantity are required';
+        if (!formData.name || formData.quantity === '') {
+            const msg = 'Product name and quantity are required';
             if (isMobile) {
                 toast.error(msg);
             } else {
@@ -106,23 +106,24 @@ const Store = () => {
             setLoading(true);
             const upb = Number(formData.unitsPerBag) || 1;
             const bags = Number(formData.quantity);
+            const cp = Number(formData.costPrice) || 0;
 
-            // If editing, we send the total kg because the backend PUT expects total kg
-            // If creating, the backend POST now expects bags and will calculate total kg
             let dataToSend;
             if (editingId) {
                 const totalKg = bags * upb;
                 dataToSend = {
                     ...formData,
                     quantity: totalKg,
-                    unitsPerBag: upb
+                    unitsPerBag: upb,
+                    costPrice: cp
                 };
                 await storeProductAPI.update(editingId, dataToSend);
                 toast.success('Store product updated successfully');
             } else {
                 dataToSend = {
                     ...formData,
-                    unitsPerBag: upb
+                    unitsPerBag: upb,
+                    costPrice: cp
                 };
                 await storeProductAPI.create(dataToSend);
                 toast.success('Store product added successfully');
@@ -172,8 +173,8 @@ const Store = () => {
         const bags = product.quantity / upb;
         setFormData({
             name: product.name,
-            costPrice: product.costPrice,
-            quantity: bags, // For the UI, we show bags
+            costPrice: product.costPrice || '0',
+            quantity: bags,
             unitsPerBag: upb,
             barcode: product.barcode || '',
             category: product.category || '',
@@ -189,7 +190,7 @@ const Store = () => {
             productName: product.name,
             type: type,
             quantity: '',
-            adjustmentType: 'units',
+            adjustmentType: 'bags',
             notes: ''
         });
         setIsAdjustModalOpen(true);
@@ -212,15 +213,14 @@ const Store = () => {
         (product.category && product.category.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const totalValue = products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0);
-    const totalQuantity = products.reduce((sum, p) => sum + p.quantity, 0);
+    const totalBags = products.reduce((sum, p) => sum + (p.quantity / (p.unitsPerBag || 1)), 0);
 
     return (
         <div className="p-4 sm:p-6 lg:p-8">
             <Header title="Store Inventory" subtitle="Manage warehouse products" />
 
             {/* Statistics */}
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl shadow-lg border border-blue-400">
                     <div className="flex items-center justify-between">
                         <div>
@@ -236,20 +236,8 @@ const Store = () => {
                 <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-xl shadow-lg border border-purple-400">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-purple-100 font-medium">Total Quantity</p>
-                            <p className="text-3xl font-bold text-white mt-1">{totalQuantity.toFixed(2)} kg</p>
-                        </div>
-                        <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-                            <Package size={28} className="text-white" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl shadow-lg border border-green-400">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-green-100 font-medium">Total Value</p>
-                            <p className="text-3xl font-bold text-white mt-1">Rs {totalValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                            <p className="text-sm text-purple-100 font-medium">Total Bags In Stock</p>
+                            <p className="text-3xl font-bold text-white mt-1">{Math.floor(totalBags)} Bags</p>
                         </div>
                         <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
                             <Package size={28} className="text-white" />
@@ -303,82 +291,76 @@ const Store = () => {
                     </div>
                 ) : (
                     <>
-                        {/* Desktop Table */}
+                        {/* Desktop Table - Bags Only */}
                         <div className="hidden md:block overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-gradient-to-r from-primary-600 to-primary-700 text-white">
                                     <tr>
                                         <th className="p-4 text-left text-xs font-semibold">Product Name</th>
                                         <th className="p-4 text-left text-xs font-semibold">Category</th>
-                                        <th className="p-4 text-right text-xs font-semibold">Cost Price</th>
-                                        <th className="p-4 text-right text-xs font-semibold">kg/Bag</th>
-                                        <th className="p-4 text-right text-xs font-semibold">Total Stock</th>
-                                        <th className="p-4 text-right text-xs font-semibold">Total Value</th>
+                                        <th className="p-4 text-right text-xs font-semibold">Stock (Bags)</th>
                                         <th className="p-4 text-center text-xs font-semibold">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {filteredProducts.map((product, index) => (
-                                        <tr key={product._id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
-                                            <td className="p-4 font-medium text-gray-900 dark:text-white">{product.name}</td>
-                                            <td className="p-4 text-sm text-gray-600 dark:text-gray-300">{product.category || '-'}</td>
-                                            <td className="p-4 text-right font-semibold text-gray-900 dark:text-white">Rs {product.costPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</td>
-                                            <td className="p-4 text-right text-sm text-gray-600 dark:text-gray-300">{product.unitsPerBag || 1} kg</td>
-                                            <td className="p-4 text-right font-semibold text-gray-900 dark:text-white">{product.quantity.toFixed(2)} kg</td>
-                                            <td className="p-4 text-right font-bold text-primary-600 dark:text-primary-400">Rs {(product.costPrice * product.quantity).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                                            <td className="p-4">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button onClick={() => openAdjustModal(product, 'add')} className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors" title="Add Stock">
-                                                        <ArrowUpCircle size={20} />
-                                                    </button>
-                                                    <button onClick={() => openAdjustModal(product, 'deduct')} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Deduct Stock">
-                                                        <ArrowDownCircle size={20} />
-                                                    </button>
-                                                    <div className="w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
-                                                    <button onClick={() => handleEdit(product)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Edit">
-                                                        <Edit2 size={18} />
-                                                    </button>
-                                                    <button onClick={() => setDeleteModal({ isOpen: true, product })} className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Delete">
-                                                        <Trash2 size={18} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {filteredProducts.map((product, index) => {
+                                        const bagsCount = product.quantity / (product.unitsPerBag || 1);
+                                        return (
+                                            <tr key={product._id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
+                                                <td className="p-4 font-medium text-gray-900 dark:text-white">{product.name}</td>
+                                                <td className="p-4 text-sm text-gray-600 dark:text-gray-300">{product.category || '-'}</td>
+                                                <td className="p-4 text-right font-bold text-primary-600 dark:text-primary-400">{Math.floor(bagsCount)} Bags</td>
+                                                <td className="p-4">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button onClick={() => openAdjustModal(product, 'add')} className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors" title="Add Bags">
+                                                            <ArrowUpCircle size={20} />
+                                                        </button>
+                                                        <button onClick={() => openAdjustModal(product, 'deduct')} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Deduct Bags">
+                                                            <ArrowDownCircle size={20} />
+                                                        </button>
+                                                        <div className="w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+                                                        <button onClick={() => handleEdit(product)} className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Edit">
+                                                            <Edit2 size={18} />
+                                                        </button>
+                                                        <button onClick={() => setDeleteModal({ isOpen: true, product })} className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Delete">
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
 
-                        {/* Mobile Card View */}
+                        {/* Mobile Card View - Bags Only */}
                         <div className="md:hidden">
-                            {filteredProducts.map((product) => (
-                                <div key={product._id} className="p-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-bold text-gray-900 dark:text-white">{product.name}</h3>
-                                        <div className="flex gap-1">
-                                            <button onClick={() => openAdjustModal(product, 'add')} className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg">
-                                                <ArrowUpCircle size={18} />
-                                            </button>
-                                            <button onClick={() => openAdjustModal(product, 'deduct')} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
-                                                <ArrowDownCircle size={18} />
-                                            </button>
-                                            <button onClick={() => handleEdit(product)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg">
-                                                <Edit2 size={18} />
-                                            </button>
+                            {filteredProducts.map((product) => {
+                                const bagsCount = product.quantity / (product.unitsPerBag || 1);
+                                return (
+                                    <div key={product._id} className="p-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h3 className="font-bold text-gray-900 dark:text-white">{product.name}</h3>
+                                            <div className="flex gap-1">
+                                                <button onClick={() => openAdjustModal(product, 'add')} className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg">
+                                                    <ArrowUpCircle size={18} />
+                                                </button>
+                                                <button onClick={() => openAdjustModal(product, 'deduct')} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
+                                                    <ArrowDownCircle size={18} />
+                                                </button>
+                                                <button onClick={() => handleEdit(product)} className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg">
+                                                    <Edit2 size={18} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm">
+                                            <div className="text-gray-500 dark:text-gray-400">{product.category || 'General'}</div>
+                                            <div className="text-right font-bold text-primary-600 dark:text-primary-400">{Math.floor(bagsCount)} Bags</div>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2 text-sm">
-                                        <div className="text-gray-500 dark:text-gray-400">Category:</div>
-                                        <div className="text-right font-medium text-gray-700 dark:text-gray-300">{product.category || '-'}</div>
-                                        <div className="text-gray-500 dark:text-gray-400">Cost Price:</div>
-                                        <div className="text-right font-semibold text-gray-900 dark:text-white">Rs {product.costPrice.toFixed(2)}</div>
-                                        <div className="text-gray-500 dark:text-gray-400">Total Stock:</div>
-                                        <div className="text-right font-semibold text-gray-900 dark:text-white">{product.quantity.toFixed(2)} kg</div>
-                                        <div className="text-gray-500 dark:text-gray-400">Total Value:</div>
-                                        <div className="text-right font-bold text-primary-600 dark:text-primary-400">Rs {(product.costPrice * product.quantity).toFixed(0)}</div>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </>
                 )}
@@ -408,20 +390,12 @@ const Store = () => {
                                 <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="Enter product name" required />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Cost Price (Rs) *</label>
-                                    <input type="number" name="costPrice" value={formData.costPrice} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0" step="0.01" required />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">kg Per Bag</label>
-                                    <input type="number" name="unitsPerBag" value={formData.unitsPerBag} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="1" min="0.01" step="0.01" required />
-                                </div>
-                            </div>
-
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">{editingId ? 'Quantity (Bags)' : 'Initial Quantity (Bags)'} *</label>
-                                <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0" step="0.01" required />
+                                <div className="relative">
+                                    <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white pr-16" placeholder="0" min="0" step="0.01" required />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">Bags</span>
+                                </div>
                             </div>
 
                             <div>
@@ -459,7 +433,7 @@ const Store = () => {
                         <div className={`p-6 rounded-t-2xl text-white flex justify-between items-center ${adjustData.type === 'add' ? 'bg-green-600' : 'bg-red-600'}`}>
                             <h3 className="text-xl font-bold flex items-center gap-2">
                                 {adjustData.type === 'add' ? <ArrowUpCircle /> : <ArrowDownCircle />}
-                                {adjustData.type === 'add' ? 'Add Stock' : 'Deduct Stock'}
+                                {adjustData.type === 'add' ? 'Add Bags' : 'Deduct Bags'}
                             </h3>
                             <button onClick={resetAdjustForm} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
                                 <X size={24} />
@@ -471,17 +445,11 @@ const Store = () => {
                                 Product: <span className="text-gray-900 dark:text-white font-bold">{adjustData.productName}</span>
                             </p>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Quantity</label>
-                                    <input type="number" name="quantity" value={adjustData.quantity} onChange={handleAdjustChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="0" min="0.01" step="0.01" required autoFocus />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Unit</label>
-                                    <select name="adjustmentType" value={adjustData.adjustmentType} onChange={handleAdjustChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-                                        <option value="units">kg</option>
-                                        <option value="bags">Bags</option>
-                                    </select>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Number of Bags</label>
+                                <div className="relative">
+                                    <input type="number" name="quantity" value={adjustData.quantity} onChange={handleAdjustChange} className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white pr-16" placeholder="0" min="0.01" step="0.01" required autoFocus />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">Bags</span>
                                 </div>
                             </div>
 
