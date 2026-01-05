@@ -9,11 +9,7 @@ const Products = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
     price: '',
-    quantity: '',
-    category: '',
-    supplier: '',
     costPrice: '',
   });
   const [editingId, setEditingId] = useState(null);
@@ -49,11 +45,7 @@ const Products = () => {
   const resetForm = () => {
     setFormData({
       name: '',
-      description: '',
       price: '',
-      quantity: '',
-      category: '',
-      supplier: '',
       costPrice: '',
     });
     setEditingId(null);
@@ -65,8 +57,8 @@ const Products = () => {
     e.preventDefault();
     setError('');
 
-    if (!formData.name || !formData.price || !formData.supplier) {
-      const msg = 'Name, price, and supplier are required';
+    if (!formData.name || !formData.price) {
+      const msg = 'Name and price are required';
       if (isMobile) {
         toast.error(msg);
       } else {
@@ -123,10 +115,10 @@ const Products = () => {
     }
   };
 
+
+
   const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -169,10 +161,7 @@ const Products = () => {
             <thead className="bg-gradient-to-r from-primary-600 to-primary-700 text-white">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold">Product Name</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold">Category</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold">Supplier</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold">Price</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold">Stock</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold">Cost Price</th>
                 <th className="px-6 py-4 text-center text-xs font-semibold">Actions</th>
               </tr>
             </thead>
@@ -202,26 +191,11 @@ const Products = () => {
                         </div>
                         <div>
                           <div className="text-sm font-semibold text-gray-900 dark:text-white">{product.name}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{product.description}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                        {product.category || 'Uncategorized'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{product.supplier}</td>
                     <td className="px-6 py-4 text-right text-sm font-bold text-gray-900 dark:text-white">
-                      Rs {product.price.toFixed(0)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                        ${product.quantity > 10 ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                          product.quantity > 0 ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                            'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                        {product.quantity} units
-                      </span>
+                      Rs {product.costPrice ? product.costPrice.toFixed(0) : '0'}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -275,32 +249,11 @@ const Products = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Category</p>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                      {product.category || 'Uncategorized'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Supplier</p>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{product.supplier}</p>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="mb-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Price</p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">Rs {product.price.toFixed(0)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Stock</p>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold 
-                      ${product.quantity > 10 ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                        product.quantity > 0 ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                          'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                      {product.quantity} units
-                    </span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Cost Price</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">Rs {product.costPrice ? product.costPrice.toFixed(0) : '0'}</p>
                   </div>
                 </div>
 
@@ -327,50 +280,41 @@ const Products = () => {
       </div>
 
       {/* Modal Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] animate-slide-up">
-            <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-100 dark:border-gray-600 flex justify-between items-center flex-shrink-0">
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                {editingId ? <Edit2 size={20} className="text-primary-600 dark:text-primary-400" /> : <Plus size={20} className="text-primary-600 dark:text-primary-400" />}
-                {editingId ? 'Edit Product' : 'Add New Product'}
-              </h2>
-              <button onClick={resetForm} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <X size={24} />
-              </button>
-            </div>
+      {
+        isModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] animate-slide-up">
+              <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4 border-b border-gray-100 dark:border-gray-600 flex justify-between items-center flex-shrink-0">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                  {editingId ? <Edit2 size={20} className="text-primary-600 dark:text-primary-400" /> : <Plus size={20} className="text-primary-600 dark:text-primary-400" />}
+                  {editingId ? 'Edit Product' : 'Add New Product'}
+                </h2>
+                <button onClick={resetForm} className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
 
-            <div className="overflow-y-auto p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && !isMobile && (
-                  <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
-                    {error}
-                  </div>
-                )}
+              <div className="overflow-y-auto p-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {error && !isMobile && (
+                    <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                      {error}
+                    </div>
+                  )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product Name *</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="e.g. Wireless Mouse"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</label>
-                    <input
-                      type="text"
-                      name="category"
-                      value={formData.category}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="e.g. Electronics"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product Name *</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        placeholder="e.g. Wireless Mouse"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Selling Price *</label>
@@ -402,102 +346,69 @@ const Products = () => {
                       />
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantity</label>
-                    <input
-                      type="number"
-                      name="quantity"
-                      value={formData.quantity}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="0"
-                      onWheel={(e) => e.target.blur()}
-                    />
+
+                  <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700 mt-auto">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 btn-primary"
+                    >
+                      {loading ? 'Saving...' : editingId ? 'Update Product' : 'Add Product'}
+                    </button>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Supplier *</label>
-                    <input
-                      type="text"
-                      name="supplier"
-                      value={formData.supplier}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="Supplier Name"
-                    />
-                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Delete Confirmation Modal */}
+      {
+        deleteModal.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
+              <div className="p-6">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full">
+                  <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</label>
-                  <textarea
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows="3"
-                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Product description..."
-                  />
-                </div>
+                <h3 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">
+                  Delete Product?
+                </h3>
 
-                <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-700 mt-auto">
+                <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
+                  Are you sure you want to delete <span className="font-semibold text-gray-900 dark:text-white">{deleteModal.product?.name}</span>? This action cannot be undone.
+                </p>
+
+                <div className="flex gap-3">
                   <button
-                    type="button"
-                    onClick={resetForm}
-                    className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-colors"
+                    onClick={() => setDeleteModal({ isOpen: false, product: null })}
+                    className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-all"
                   >
                     Cancel
                   </button>
                   <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 btn-primary"
+                    onClick={handleDeleteConfirm}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-all flex items-center justify-center gap-2"
                   >
-                    {loading ? 'Saving...' : editingId ? 'Update Product' : 'Add Product'}
+                    <Trash2 size={18} />
+                    Delete
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
-            <div className="p-6">
-              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full">
-                <AlertTriangle size={32} className="text-red-600 dark:text-red-400" />
-              </div>
-
-              <h3 className="text-xl font-bold text-center text-gray-900 dark:text-white mb-2">
-                Delete Product?
-              </h3>
-
-              <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
-                Are you sure you want to delete <span className="font-semibold text-gray-900 dark:text-white">{deleteModal.product?.name}</span>? This action cannot be undone.
-              </p>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setDeleteModal({ isOpen: false, product: null })}
-                  className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteConfirm}
-                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-all flex items-center justify-center gap-2"
-                >
-                  <Trash2 size={18} />
-                  Delete
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

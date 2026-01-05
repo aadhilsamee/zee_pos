@@ -50,17 +50,8 @@ const Sales = () => {
   };
 
   const addToCart = (product) => {
-    if (product.quantity <= 0) {
-      triggerError('Product is out of stock!');
-      return;
-    }
-
     const existingItem = cartItems.find((item) => item.productId === product._id);
     if (existingItem) {
-      if (existingItem.quantity >= product.quantity) {
-        triggerError('Not enough stock available!');
-        return;
-      }
       setCartItems(
         cartItems.map((item) =>
           item.productId === product._id
@@ -88,10 +79,6 @@ const Sales = () => {
 
   const updateQuantity = (productId, newQuantity) => {
     const item = cartItems.find(i => i.productId === productId);
-    if (newQuantity > item.maxQuantity) {
-      triggerError(`Only ${item.maxQuantity} items in stock`);
-      return;
-    }
 
     if (newQuantity <= 0) {
       setCartItems(cartItems.filter((item) => item.productId !== productId));
@@ -553,13 +540,9 @@ const Sales = () => {
                       <button
                         key={product._id}
                         onClick={() => addToCart(product)}
-                        disabled={product.quantity <= 0}
                         className={`
                           text-left p-4 border rounded-xl transition-all duration-200 group relative overflow-hidden
-                          ${product.quantity <= 0
-                            ? 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60 cursor-not-allowed'
-                            : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-500 hover:shadow-md'
-                          }
+                          bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-500 hover:shadow-md
                         `}
                       >
                         <div className="relative z-10">
@@ -571,9 +554,8 @@ const Sales = () => {
                           </div>
                           <p className="text-sm text-gray-500 mb-2">{product.supplier}</p>
                           <div className="flex items-center gap-2 text-xs">
-                            <span className={`w-2 h-2 rounded-full ${product.quantity > 10 ? 'bg-green-500' : product.quantity > 0 ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
-                            <span className={`${product.quantity <= 5 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                              {product.quantity > 0 ? `${product.quantity} in stock` : 'Out of Stock'}
+                            <span className="text-gray-500">
+                              {product.quantity} in stock
                             </span>
                           </div>
                         </div>

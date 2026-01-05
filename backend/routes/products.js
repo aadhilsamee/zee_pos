@@ -20,8 +20,8 @@ router.post('/', authMiddleware, async (req, res) => {
     const { name, description, price, quantity, category, supplier, costPrice } = req.body;
 
     // Strict validation
-    if (!name || !supplier) {
-      return res.status(400).json({ message: 'Name and supplier are required' });
+    if (!name) {
+      return res.status(400).json({ message: 'Name is required' });
     }
 
     // Ensure price is a valid number, default to 0
@@ -40,7 +40,7 @@ router.post('/', authMiddleware, async (req, res) => {
       price: parsedPrice,
       quantity: parseInt(quantity) || 0,
       category: category ? String(category) : '',
-      supplier: String(supplier),
+      supplier: supplier ? String(supplier) : '',
       costPrice: parseFloat(costPrice) || 0,
     });
 
